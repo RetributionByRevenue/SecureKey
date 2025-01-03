@@ -10,6 +10,7 @@ from kivy.uix.scrollview import ScrollView
 from kivy.core.clipboard import Clipboard
 from kivy.uix.popup import Popup
 from kivy.utils import platform
+from CustomModules import CustomGraphics
 import os
 from datetime import datetime,timezone
 import bcrypt
@@ -426,19 +427,56 @@ class ProtectedContentScreen(Screen):
 
     def add_message_to_ui(self, message):
         """Add a new message with copy button to the UI"""
-        button_layout = BoxLayout(orientation='horizontal', size_hint_y=None, height=50, padding=10)
-        button_label = Label(text=message, size_hint_x=0.5)
+        # Create main layout that will resize based on content
+        button_layout = BoxLayout(
+            orientation='horizontal',
+            size_hint_y=None,
+            padding=10
+        )
+        
+        # Create label with text wrapping enabled
+        button_label = Label(
+            text=message,
+            size_hint_x=0.5,
+            text_size=(None, None),  # Will be set in bind
+            halign='left',
+            valign='middle',
+            padding=(10, 10),
+            markup=True,
+            shorten=False,
+        )
+        
+        # Allow the label to wrap text
+        button_label.bind(
+            width=lambda *x: setattr(button_label, 'text_size', (button_label.width, None)),
+            texture_size=lambda *x: setattr(button_label, 'height', button_label.texture_size[1])
+        )
+        
+        # Bind the layout's height to the label's height
+        button_label.bind(
+            height=lambda *x: setattr(button_layout, 'height', button_label.height + 20)
+        )
+        
         global counter
         counter = counter + 1
-        button_label.id = counter 
+        button_label.id = counter
         
-        copy_button = Button(text="Copy", size_hint_x=0.25,
-                            on_press=lambda instance: Clipboard.copy(button_label.text))
+        copy_button = Button(
+            text="Copy",
+            size_hint_x=0.25,
+            size_hint_y=None,
+            height=50,
+            on_press=lambda instance: Clipboard.copy(button_label.text)
+        )
         
-        # Create remove button that references its parent layout
-        rm_button = Button(text="Remove", size_hint_x=0.25,
-                          on_press=lambda instance: self.content_layout.remove_widget(button_layout))
-        
+        rm_button = Button(
+            text="Remove",
+            size_hint_x=0.25,
+            size_hint_y=None,
+            height=50,
+            on_press=lambda instance: self.content_layout.remove_widget(button_layout)
+        )
+        CustomGraphics.SetBG(button_layout, bg_color=[0, 0, 0.5, 1])
         button_layout.add_widget(button_label)
         button_layout.add_widget(copy_button)
         button_layout.add_widget(rm_button)
@@ -579,5 +617,3 @@ class PasswordApp(App):
 
 if __name__ == "__main__":
     PasswordApp().run()
-    
-    
