@@ -7,7 +7,7 @@ p4a.source_dir =/home/kivy/python-for-android
 
 # (str) Package name
 # That chars can't be cyrillic!
-package.name = PlyerNotification
+package.name = SecureKey
 
 # (str) Package domain (needed for android/ios packaging)
 package.domain = org.test
