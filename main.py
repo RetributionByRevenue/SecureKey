@@ -141,7 +141,7 @@ class ProtectedContentScreen(Screen):
             try:
                 for uri in uri_list:
                     # Copy file from shared storage to private storage
-                    selected_path = SharedStorage().copy_from_shared(uri)
+                    selected_path = SharedStorage().copy_from_shared(uri) #can only open .txt files
                     
                     # Read the file contents
                     with open(selected_path, 'r') as file:
@@ -151,6 +151,7 @@ class ProtectedContentScreen(Screen):
                         file.write(file_contents)
                     global item
                     item = selected_path
+                    toast('File Selected, press Confirm to continue.', True, 80, 200, 0)
                        
             except Exception as e:
                 toast(f'Error in callback: {str(e)}', True, 80, 200, 0)
