@@ -23,7 +23,7 @@ version = 0.6
 
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-requirements = python3,kivy,kivymd,plyer,android,jnius,bcrypt,android-toast,pyaes,pysos
+requirements = python3,kivy,android,bcrypt,android-toast,pyaes,pysos,androidstorage4kivy
 
 # (str) Icon of the application
 icon.filename = %(source.dir)s/data/legal_icons/icon.png
@@ -54,7 +54,7 @@ fullscreen = 0
 
 # (list) Permissions
 # (See https://python-for-android.readthedocs.io/en/latest/buildoptions/#build-options-1 for all the supported syntaxes and properties)
-android.permissions = RECEIVE_BOOT_COMPLETED, WAKE_LOCK, VIBRATE, INTERNET, ACCESS_NETWORK_STATE, POST_NOTIFICATIONS, FOREGROUND_SERVICE
+android.permissions = WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
 
 # (str) Full name including package path of the Java class that implements Python Service
 # use that parameter to set custom Java class which extends PythonService
