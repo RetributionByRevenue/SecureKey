@@ -16,195 +16,14 @@ from datetime import datetime,timezone
 import bcrypt
 import pysos
 import json
-
-#######################
-####ENCRYPT/DECRYPT####
-import base64
-import binascii
-import hmac
-import time
-import os
-import struct
-from pyaes import AESModeOfOperationCBC, Encrypter, Decrypter
-
-__all__ = [
-    "InvalidSignature",
-    "InvalidToken",
-    "Fernet"
-]
-_MAX_CLOCK_SKEW = 60
-
-
-class InvalidToken(Exception):
-    pass
-
-
-class InvalidSignature(Exception):
-    pass
-
-
-log = []
-
-class Fernet:
-    """
-    Pure python Fernet module
-    see https://github.com/fernet/spec/blob/master/Spec.md
-    """
-    def __init__(self, key):
-        if not isinstance(key, bytes):
-            self._log_error("init function - raise #1 - key must be bytes")
-            raise TypeError("key must be bytes.")
-
-        try:
-            key = base64.urlsafe_b64decode(key)
-        except Exception as e:
-            self._log_error(f"init function - raise #2 - {str(e)}")
-            raise ValueError("Invalid base64-encoded key.")
-
-        if len(key) != 32:
-            self._log_error("init function - raise #3 - Fernet key must be 32 url-safe base64-encoded bytes.")
-            raise ValueError("Fernet key must be 32 url-safe base64-encoded bytes.")
-
-        self._signing_key = key[:16]
-        self._encryption_key = key[16:]
-
-    @classmethod
-    def generate_key(cls):
-        return base64.urlsafe_b64encode(os.urandom(32))
-
-    def encrypt(self, data):
-        current_time = int(time.time())
-        iv = os.urandom(16)
-        return self._encrypt_from_parts(data, current_time, iv)
-
-    def _encrypt_from_parts(self, data, current_time, iv):
-        try:
-            encrypter = Encrypter(AESModeOfOperationCBC(self._encryption_key, iv))
-            ciphertext = encrypter.feed(data)
-            ciphertext += encrypter.feed()
-        except Exception as e:
-            self._log_error(f"_encrypt_from_parts function - raise #1 - {str(e)}")
-            raise
-
-        basic_parts = (b"\x80" + struct.pack(">Q", current_time) + iv + ciphertext)
-
-        hmactext = hmac.new(self._signing_key, digestmod='sha256')
-        hmactext.update(basic_parts)
-
-        return base64.urlsafe_b64encode(basic_parts + hmactext.digest())
-
-    def decrypt(self, token, ttl=None):
-        if not isinstance(token, bytes):
-            self._log_error("decrypt function - raise #1 - token must be bytes")
-            raise TypeError("token must be bytes.")
-
-        current_time = int(time.time())
-
-        try:
-            data = base64.urlsafe_b64decode(token)
-        except (TypeError, binascii.Error) as e:
-            self._log_error(f"decrypt function - raise #2 - {str(e)}")
-            raise InvalidToken("Invalid base64-encoded token.")
-
-        if not data or data[0] != 0x80:
-            self._log_error("decrypt function - raise #3 - Invalid token header")
-            raise InvalidToken("Invalid token header.")
-
-        try:
-            timestamp, = struct.unpack(">Q", data[1:9])
-        except struct.error as e:
-            self._log_error(f"decrypt function - raise #4 - {str(e)}")
-            raise InvalidToken("Invalid token timestamp.")
-
-        if ttl is not None:
-            if timestamp + ttl < current_time:
-                self._log_error("decrypt function - raise #5 - Token expired")
-                raise InvalidToken("Token expired.")
-
-            if current_time + _MAX_CLOCK_SKEW < timestamp:
-                self._log_error("decrypt function - raise #6 - Token from the future")
-                raise InvalidToken("Token from the future.")
-
-        hmactext = hmac.new(self._signing_key, digestmod='sha256')
-        hmactext.update(data[:-32])
-        if not hmac.compare_digest(hmactext.digest(), data[-32:]):
-            self._log_error("decrypt function - raise #7 - HMAC check failed")
-            raise InvalidToken("HMAC check failed.")
-
-        iv = data[9:25]
-        ciphertext = data[25:-32]
-        try:
-            decryptor = Decrypter(AESModeOfOperationCBC(self._encryption_key, iv))
-            plaintext = decryptor.feed(ciphertext)
-            plaintext += decryptor.feed()
-        except ValueError as e:
-            self._log_error(f"decrypt function - raise #8 - {str(e)}")
-            raise InvalidToken("Decryption failed.")
-
-        return plaintext
-
-    @staticmethod
-    def _log_error(error_message):
-        """
-        Log an error message if it's not already in the global log.
-        """
-        global log
-        if error_message not in log:
-            log.append(error_message)
-            
-def generate_fernet_key_from_password(password):
-    """
-    Convert a password of any length into a valid Fernet key.
-    Uses padding or truncation to ensure 32 bytes before base64 encoding.
-    """
-    password_bytes = password.encode()
-    
-    # If password is too short, pad it with repeating pattern
-    if len(password_bytes) < 32:
-        # Calculate how many times to repeat the password
-        multiplier = (32 // len(password_bytes)) + 1
-        password_bytes = password_bytes * multiplier
-    
-    # Take exactly 32 bytes
-    password_bytes = password_bytes[:32]
-    
-    return base64.urlsafe_b64encode(password_bytes)
-
-def encrypt_message(encryption_key, message):
-    """Encrypt a message using the given encryption key."""
-    fernet_key = generate_fernet_key_from_password(encryption_key)
-    fernet = Fernet(fernet_key)
-    return (fernet.encrypt(message.encode())).decode()
-
-def decrypt_message(encryption_key, encrypted_message):
-    nl='''
-'''
-    """Decrypt a message using the given encryption key."""
-    #global aes_key
-    #aes_key = encryption_key+"__"+encrypted_message[:5]+"..."+encrypted_message[-5:]
-    if 'str' in str(type(encrypted_message)):
-        encrypted_message = encrypted_message.encode()
-    try:
-        #global log
-
-        #log.append(f"Decrypting with key: {encryption_key}")
-        #log.append((f"encrypted message: {encrypted_message}"))
-        fernet_key = generate_fernet_key_from_password(encryption_key)
-        #log.append((f"fernet key: {fernet_key}"))
-        fernet = Fernet(fernet_key)
-        #log.append(f"fernet instance: {fernet}")
-        decrypted_message = fernet.decrypt(encrypted_message)
-        #log.append(f"decrypt message: {decrypted_message}")
-        return decrypted_message.decode()
-    except Exception as e:
-        #return str(e)+nl+str(log)
-        return "invalid key"
-#######################
-#######################
+from fernet_utils import encrypt_message, decrypt_message, Fernet, generate_fernet_key_from_password
+from androidstorage4kivy import SharedStorage, Chooser
+from android.permissions import request_permissions, Permission
 
 # Global variables
 aes_key = ""
 counter = 0
+item = ""
 
 class PasswordScreen(Screen):
     # [Previous PasswordScreen code remains the same]
@@ -261,9 +80,16 @@ class ProtectedContentScreen(Screen):
         else:
             self.export_dir = os.path.expanduser('~')
             
+        request_permissions([
+            Permission.READ_EXTERNAL_STORAGE,
+            Permission.WRITE_EXTERNAL_STORAGE
+        ])
+            
+            
         # Rest of __init__ remains the same
         self.messages = []
         self.main_layout = BoxLayout(orientation='vertical')
+        self.selected_path = None
         
         # Top bar with menu and back button
         top_bar = BoxLayout(orientation='horizontal', size_hint_y=None, height=100)
@@ -307,91 +133,89 @@ class ProtectedContentScreen(Screen):
         
         self.add_widget(self.main_layout)
 
-    def get_available_files(self):
-        """Get list of available export files"""
-        try:
-            os.makedirs(self.export_dir, exist_ok=True)
-            files = [f for f in os.listdir(self.export_dir)]
-            return sorted(files, reverse=True)  # Most recent first
-        except Exception as e:
-            toast(f'Error listing files: {str(e)}', True, 80, 200, 0)
-            return []
-
-    def read_file_content(self, filename):
-        """Read and return the content of a file"""
-        try:
-            filepath = os.path.join(self.export_dir, filename)
-            db = pysos.Dict(filepath)
-            return db
-        except Exception as e:
-            toast(f'Error reading file: {str(e)}', True, 80, 200, 0)
-            return None
+############################################################################################################
 
     def show_file_selection_popup(self, *args):
-    
-        storage_path = os.getenv('EXTERNAL_STORAGE') or '/storage/emulated/0'
-        export_dir = os.path.join(storage_path, 'Documents')
-        
-        files = os.listdir(export_dir)
-        files = [i for i in files if ".trashed-" not in i]
-        
-        #Clipboard.copy(str(files))
-        if not files:
-            toast('No exported files found', True, 80, 200, 0)
-            return
-            
+        # Define the chooser callback function
+        def chooser_callback(uri_list):
+            try:
+                for uri in uri_list:
+                    # Copy file from shared storage to private storage
+                    selected_path = SharedStorage().copy_from_shared(uri)
+                    
+                    # Read the file contents
+                    with open(selected_path, 'r') as file:
+                        file_contents = file.read()
+                    
+                    with open(selected_path, 'w') as file:
+                        file.write(file_contents)
+                    global item
+                    item = selected_path
+                       
+            except Exception as e:
+                toast(f'Error in callback: {str(e)}', True, 80, 200, 0)
+
+        # Define the open_and_decrypt function
+        def open_and_decrypt(instance):
+            try:
+                global item
+                if 'item' in globals() and item:
+                    global counter
+                    counter = 0
+                    self.content_layout.clear_widgets()
+                    
+                    db = pysos.Dict(item)
+                    Clipboard.copy(item + str(db.keys))
+                    for i in db.keys():
+                        self.add_message_to_ui(decrypt_message(aes_key, db[i]))
+                    
+                    # Clean up the temporary file
+                    if os.path.exists(item):
+                        os.remove(item)
+                    # Dismiss the popup after successful operation
+                    popup.dismiss()
+                else:
+                    toast('No file selected. Please load a file first.', True, 80, 200, 0)
+            except Exception as e:
+                toast(f'Error: {str(e)}', True, 80, 200, 0)
+
+        # Create the main content layout for the popup
         content = BoxLayout(orientation='vertical', spacing=10, padding=10)
         
-        # Create scrollable layout for file buttons
+        # Create a scrollable layout for file buttons
         scroll_layout = BoxLayout(orientation='vertical', spacing=5, size_hint_y=None)
         scroll_layout.bind(minimum_height=scroll_layout.setter('height'))
         
-        # Create the popup first so we can reference it in the button callbacks
-        popup = Popup(title='Select File to Import',
-                     size_hint=(0.8, 0.8))
-        
-        # Add a button for each file
-        for filename in files:
-            # Create a function that will read this specific file
-            def make_reader(fname):
-                self.content_layout.clear_widgets()
-                global counter
-                counter = 0
-                def read_this_file(instance):
-                    content = self.read_file_content(fname) #returns dict or None
-                    if content is not None:
-                        for i in content.keys():
-                                #print(i, db[i])
-                            self.add_message_to_ui(   decrypt_message(aes_key, content[i] )  )
-                        toast(f'Restored DB', True, 80, 200, 0)
-                    else:
-                        toast(f'File is not a readable database, or empty database.', True, 80, 200, 0)
-                    popup.dismiss()
-                return read_this_file
-            
-            btn = Button(text=filename, 
-                        size_hint_y=None, 
-                        height=40)
-            btn.bind(on_press=make_reader(filename))
-            scroll_layout.add_widget(btn)
-        
-        # Create ScrollView for buttons
+        # Create a ScrollView for the file buttons
         scroll = ScrollView(size_hint=(1, 1))
         scroll.add_widget(scroll_layout)
         
-        # Add close button
-        close_button = Button(text='Close', 
-                            size_hint_y=None, 
-                            height=40)
-        close_button.bind(on_press=popup.dismiss)
+        # Create the popup so it can be referenced in button callbacks
+        popup = Popup(
+            title="Select File to Import",
+            size_hint=(0.8, 0.8),
+        )
         
-        # Add widgets to content
+        # Create the "Load" button
+        load_button = Button(text="Select", size_hint_y=None, height=40)
+        load_button.bind(on_press=lambda instance: Chooser(chooser_callback).choose_content("text/*"))
+        
+        # Create the "Confirm" button
+        confirm_button = Button(text="Confirm", size_hint_y=None, height=40)
+        confirm_button.bind(on_press=open_and_decrypt)
+        
+        # Add widgets to the main content layout
         content.add_widget(scroll)
-        content.add_widget(close_button)
+        content.add_widget(load_button)
+        content.add_widget(confirm_button)
         
-        # Set popup content and open
+        # Set the popup's content and open it
         popup.content = content
         popup.open()
+
+
+
+############################################################################################################
 
 
     def show_menu_popup(self, instance):
@@ -525,7 +349,7 @@ class ProtectedContentScreen(Screen):
 
             # Generate filename with timestamp
             timestamp = int(datetime.now(tz=timezone.utc).timestamp() * 1000)
-            filename = f'{timestamp}.db'
+            filename = f'{timestamp}_encrypt_db.txt'
             filepath = os.path.join(export_dir, filename)
             data = self.show_widgets()
             if data == '{}' or aes_key == "":
