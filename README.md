@@ -1,6 +1,6 @@
 # SecureKey - Secure Secrets &amp; Encrypted Storage for Android
 
-<img src="https://github.com/RetributionByRevenue/SecureKey/blob/main/screenshots/Screenshot_20250107-185105.png?raw=true" height="600" >
+<img src="https://raw.githubusercontent.com/RetributionByRevenue/SecureKey/refs/heads/main/screenshots/showcase.png" height="800" >
 
 A secure, encrypted, offline secrets manager Android application built with Kivy that allows users to safely store and manage sensitive information like cryptocurrency keys, passwords, and other secrets.
 
