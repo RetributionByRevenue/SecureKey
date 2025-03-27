@@ -4,6 +4,16 @@
 
 A secure, encrypted, offline secrets manager Android application built with Kivy that allows users to safely store and manage sensitive information like cryptocurrency keys, passwords, and other secrets.
 
+## Security Philosophy
+
+I was inspired by a project called Piggydb, a note-taking application that allows users to export a portable database in a .pig file. The Piggydb UI lets users import the exported database, making it very useful across devices.
+
+I wanted a similar approach for my application. My goal was to have users enter their encryption key and store their secrets securely, with the ability to export them to the Android filesystem for safekeeping. Additionally, users should be able to import the same encrypted database with the correct encryption key to retrieve their saved data.
+
+## Download
+
+I added a download to the .apk file the was made by buildozer. 
+
 ## How to Use
 
 1. Build the Android APK:
